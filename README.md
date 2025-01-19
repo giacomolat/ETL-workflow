@@ -286,6 +286,36 @@ This transformation contains the following steps:
   ![image](https://github.com/user-attachments/assets/f3ef07de-c87d-447f-a81f-207e79e8ae45)
 
 ### Job: Transform & Load
-Transform & Load JOb consists of two transformations:
+Transform & Load Job consists of two transformations:
 * dim_payment;
 * fact_sales.
+
+![image](https://github.com/user-attachments/assets/acd6de8d-3b39-436c-8afc-d26a83b9c3df)
+
+#### 1'Transformation for Transform & Load Job: dim_payment
+From here we structure our core layer, starting with the dim_payment size table. First, we will manage all the information from PostgresSQL via PgAdmin; in particular, we will look at the different values of the payment and loyalty_card columns to check all possible combinations:
+```sql
+SELECT DISTINCT payment, loyalty_card
+FROM "Staging".sales;
+```
+![image](https://github.com/user-attachments/assets/7f55f76a-71f9-4a3d-be8f-e8ee6b522b72)
+
+We got in output 4 distinct values for payment and 2 distinct values for loyalty_card. So we will have to change:
+* the null values with a dummy value because the null values represent the people who paid cash;
+* go to remove whitespace with a trim.
+
+On Postgres, this can be done through the COALESCE function, where null values for payments will be replaced with the string cash:
+```sql
+SELECT DISTINCT COALESCE(payment, 'cash') as payment, loyalty_card
+FROM "Staging".sales;
+```
+![image](https://github.com/user-attachments/assets/f3bb1b92-66f1-4f02-a4e7-6a0dd4384538)
+
+So we will do this through Pentaho, through the **Table input** object:
+![image](https://github.com/user-attachments/assets/681a37bf-45d8-40fb-ba99-2673d4582ae0)
+![image](https://github.com/user-attachments/assets/97542413-b144-40a0-8ecc-b14fd03cf88f)
+
+Next the insert/update object, where we are going to load the data on the core.dim_payment size table, checking if the value already exists and if yes, optionally update, if not insert a new combination:
+![image](https://github.com/user-attachments/assets/789257ff-125e-4fca-9e93-f0e78162d41d)
+
+#### 2'Transformation for Transform & Load Job: fact_sales
