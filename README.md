@@ -2,7 +2,7 @@
 This project uses **Pentaho Data Integration** and **PostgreSQL** to build a data warehouse (DWH). It includes the sales fact table and two dimensional tables (dim_product and dim_payment). The ETL process implements incremental delta to optimize the extraction and loading of new data.
 
 ## Setup
-* **Software**: Pentaho Data Integration
+* **Software**: Pentaho Data Integration v10.2
 * **RDBMS**: PostgreSQL
 * **pgAdmin4**: open-source Management Tool for PostgreSQL
 
@@ -197,4 +197,32 @@ ALTER TABLE IF EXISTS core.dim_payment
 * **payment_pk**: These column is a natural key, but since it has an integer as its data type, we can already define it as a surrogate key;
 * **payment**, **loyalty_card**: These columns are dimensions, and from the fact table we have already seen that they are flags, so put this junk in the dimension table.
 
-## ETL architecture and flow
+## ETL Job & Incremental Load
+This parent-job consists of two child-jobs, called **Staging** and **Transform&Load** respectively
+![image](https://github.com/user-attachments/assets/e861c1bb-15b8-4728-bfd6-20529d1fb682)
+
+### Job: Staging
+Job Staging consists of four transformations:
+* Set Variable;
+* Get Data and output data;
+* Set variable for Sales;
+* Get variable for Sales and Load.
+
+![image](https://github.com/user-attachments/assets/388179cc-b41c-444e-afeb-a3b87362e595)
+
+#### 1'Transformation for Job Staging: Set Variable
+Starting from the first transformation, **Set Variable**, we can see that:
+![image](https://github.com/user-attachments/assets/e73cdcb3-aec7-4056-9035-45ff4e01458f)
+
+This transformation finds the last upload date and contains the following steps:
+* Table input: Runs a query, on a table core.dim_product, to determine the last upload date
+  ```sql
+  SELECT MAX(product_id)
+  FROM core.dim_product
+  ```
+  ![image](https://github.com/user-attachments/assets/eb627879-1317-4bb5-b807-ec38c08c2b14)
+* Set variable: allowed us to set an environment variable called max, which is the maximum value returned by the query, for the incremental delta operation.
+  ![image](https://github.com/user-attachments/assets/a98732e5-badf-48c9-9cf6-8d76dae68169)
+  ![image](https://github.com/user-attachments/assets/46c2bf96-8567-4667-9df4-766c2b582526)
+
+#### 2'Transformation for Job Staging: Get Data and output data
