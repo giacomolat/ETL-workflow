@@ -1,6 +1,12 @@
 # ETL-workflow
 This project uses **Pentaho Data Integration** and **PostgreSQL** to build a data warehouse (DWH). It includes the sales fact table and two dimensional tables (dim_product and dim_payment). The ETL process implements incremental delta to optimize the extraction and loading of new data.
 
+## Syllabus:
+* Setup
+* Table Structure
+* ETL Job & Incremental Load: Process
+* ETL Job & Incremental Load: Final Output
+
 ## Setup
 * **Software**: Pentaho Data Integration v10.2
 * **RDBMS**: PostgreSQL
@@ -173,7 +179,7 @@ ALTER TABLE IF EXISTS core.dim_product
 * **product_id**: product_id is the Primay Key;
 * **product_name**, **category**, **subcategory**, **brand**: These columns are the Dimensions.
 
-### Junk Dimensional table: dim_payment
+### "Junk" Dimensional table: dim_payment
 #### DDL at the Core layer
 ```sql
 -- Table: core.dim_payment
@@ -197,7 +203,7 @@ ALTER TABLE IF EXISTS core.dim_payment
 * **payment_pk**: These column is a natural key, but since it has an integer as its data type, we can already define it as a surrogate key;
 * **payment**, **loyalty_card**: These columns are dimensions, and from the fact table we have already seen that they are flags, so put this junk in the dimension table.
 
-## ETL Job & Incremental Load
+## ETL Job & Incremental Load: Process
 This parent-job consists of two child-jobs, called **Staging** and **Transform&Load** respectively
 ![image](https://github.com/user-attachments/assets/e861c1bb-15b8-4728-bfd6-20529d1fb682)
 
@@ -319,3 +325,66 @@ Next the insert/update object, where we are going to load the data on the core.d
 ![image](https://github.com/user-attachments/assets/789257ff-125e-4fca-9e93-f0e78162d41d)
 
 #### 2'Transformation for Transform & Load Job: fact_sales
+With this transformation we will read the data from the staging table, “Staging”.sales:
+```sql
+SELECT 
+	transaction_id ,
+	transactional_date ,
+	EXTRACT(year from transactional_date)*10000 + EXTRACT('month' from transactional_date)*100+EXTRACT('day' from transactional_date)as 	transactional_date_fk,
+	f.product_id ,
+	p.product_PK as product_FK,
+	payment_PK as payment_FK,
+    customer_id ,
+    credit_card ,
+   	cost  ,
+    quantity ,
+   	price
+FROM "Staging".sales f
+LEFT JOIN 
+core.dim_payment d
+ON d.payment = COALESCE(f.payment,'cash') AND d.loyalty_card=f.loyalty_card
+LEFT JOIN core.dim_product p on p.product_id=f.product_id
+order by transaction_id
+```
+![image](https://github.com/user-attachments/assets/38d1baa4-ba20-4ed1-a129-a1fa2f511d0e)
+
+Through Pentaho we go to add the Table input object, reading the data through this query tried earlier on PostgreSQL:
+![image](https://github.com/user-attachments/assets/4c592c79-8331-4d0b-9a61-948f91a38eac)
+
+Now we are going to calculate the additional fields, such as total_price, total_cost and profit, through the Calculator object:
+* ```total_price = price * quantity```
+* ```total_cost = cost * quantity```
+  ![image](https://github.com/user-attachments/assets/d35d184e-9ce8-4414-ac4f-3fc019161d0f)
+  ![image](https://github.com/user-attachments/assets/83ea5d5b-9a45-4f66-9aa4-40f05fbbef1c)
+* ```profit = total_price * total_cost```
+  ![image](https://github.com/user-attachments/assets/ec4a97ef-e3d2-405a-bf1c-7ef599551a06)
+  ![image](https://github.com/user-attachments/assets/cf7d4a1d-5475-4e6e-88c3-0684f9d505dd)
+
+Then we will bring data on core.sales:
+![image](https://github.com/user-attachments/assets/e272d8df-e716-4b08-a9e4-03a23b4bf9a3)
+
+#### Output: Transform & Load job
+Through PostgreSQL, with pgAdmin4, we check if there is data on the core layer, both for the sales facts table and the dim_payment size table:
+![image](https://github.com/user-attachments/assets/09644bef-e150-4c57-af48-ac223343812a)
+![image](https://github.com/user-attachments/assets/573e29ba-80eb-440f-a01f-4c55f5a9b7ad)
+
+## ETL Job & Incremental Load: Final Output
+Let's test Delta Load by entering data that was not entered at the start, first adding the data in our data source, then go to “DB DataWarehouseX->Public Schema->Facts Sales Table,” then “Import/Export Data...,” importing the data from the Fact_Sales_2.csv file:
+![image](https://github.com/user-attachments/assets/7088a86c-2ca5-407e-8569-c28ffc4544e9)
+![image](https://github.com/user-attachments/assets/1b65e33c-1305-49f0-bd16-4f92b572f68c)
+Output:
+![image](https://github.com/user-attachments/assets/83af8121-d941-4199-b274-a6252812c681)
+
+```sql
+SELECT COUNT(*)
+FROM public.sales;
+```
+![image](https://github.com/user-attachments/assets/8474213a-62b6-4963-b8a0-3143d04c80f5)
+
+```sql
+SELECT COUNT(*)
+FROM core.sales;
+```
+![image](https://github.com/user-attachments/assets/f399067e-1d43-4dbe-8ab4-8fdc9ad1e8d1)
+
+Now we are going to test the Delta Incremental, where we have to remember that we had set the dummy value ```‘1970-01-01 00:00:00’``` in SetLastLoadSales.ktr, and going to run the parent job CompleteETLprocess.kjb again, the output is:
