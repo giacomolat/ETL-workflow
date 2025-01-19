@@ -210,19 +210,36 @@ Job Staging consists of four transformations:
 
 ![image](https://github.com/user-attachments/assets/388179cc-b41c-444e-afeb-a3b87362e595)
 
-#### 1'Transformation for Job Staging: Set Variable
+#### 1'Transformation for Staging Job: Set Variable
 Starting from the first transformation, **Set Variable**, we can see that:
 ![image](https://github.com/user-attachments/assets/e73cdcb3-aec7-4056-9035-45ff4e01458f)
 
 This transformation finds the last upload date and contains the following steps:
-* Table input: Runs a query, on a table core.dim_product, to determine the last upload date
+* **Table input**: Runs a query, on a table core.dim_product, to determine the last upload date
   ```sql
   SELECT MAX(product_id)
   FROM core.dim_product
   ```
   ![image](https://github.com/user-attachments/assets/eb627879-1317-4bb5-b807-ec38c08c2b14)
-* Set variable: allowed us to set an environment variable called max, which is the maximum value returned by the query, for the incremental delta operation.
+* **Set variable**: allowed us to set an environment variable called max, which is the maximum value returned by the query, for the incremental delta operation.
   ![image](https://github.com/user-attachments/assets/a98732e5-badf-48c9-9cf6-8d76dae68169)
   ![image](https://github.com/user-attachments/assets/46c2bf96-8567-4667-9df4-766c2b582526)
 
-#### 2'Transformation for Job Staging: Get Data and output data
+#### 2'Transformation for Staging Job: Get Data and output data
+The second transformation is as follows:
+![image](https://github.com/user-attachments/assets/ac15229f-9b2d-420d-ac6d-08f5adda8419)
+
+This transformation makes it possible to identify records that have been added or modified since the last upload date and contains the following steps:
+* **Get variables**: Retrieves the environment variable set on the first transformation, Set Variable
+  ![image](https://github.com/user-attachments/assets/d3b52db1-582e-46d3-a7cd-f9c16bdb9dd8)
+  ![image](https://github.com/user-attachments/assets/98fe8509-c444-42ce-bed2-fb916e731a25)
+* **Table input**: Lets you run an SQL query that filters the source data (i.e., from the data source) by comparing product_id to the last product upload entered.
+  ```sql
+  SELECT * 
+  FROM "public".products 
+  WHERE product_id > '${LastLoad}'
+  ```
+* **Table output**: It allows these new or updated records to be written to the dim_product table in the data warehouse (more specifically, on the staging tier) according to the incremental load model.
+  ![image](https://github.com/user-attachments/assets/cb222a6f-e3ad-4ae9-b621-882a18bc231c)
+
+#### 3'Transformation for Staging Job: Set variable for Sales;
