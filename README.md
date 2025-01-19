@@ -202,7 +202,7 @@ This parent-job consists of two child-jobs, called **Staging** and **Transform&L
 ![image](https://github.com/user-attachments/assets/e861c1bb-15b8-4728-bfd6-20529d1fb682)
 
 ### Job: Staging
-Job Staging consists of four transformations:
+Staging Job consists of four transformations:
 * Set Variable;
 * Get Data and output data;
 * Set variable for Sales;
@@ -242,4 +242,50 @@ This transformation makes it possible to identify records that have been added o
 * **Table output**: It allows these new or updated records to be written to the dim_product table in the data warehouse (more specifically, on the staging tier) according to the incremental load model.
   ![image](https://github.com/user-attachments/assets/cb222a6f-e3ad-4ae9-b621-882a18bc231c)
 
-#### 3'Transformation for Staging Job: Set variable for Sales;
+#### 3'Transformation for Staging Job: Set variable for Sales
+The third transformation is as follows:
+![image](https://github.com/user-attachments/assets/5c5da9bb-0f28-431a-8602-f0687ca00e29)
+
+This transformation finds the last upload date and contains the following steps:
+* **Table input**: Runs a query, on a table core.sales, to determine the last upload date, where:
+    * for *Full load*, since you have no value at the beginning, you have to enter a dummy value by entering a very old date only for the first load cycle, then later we can use SELECT for Delta load:
+      ```sql
+      SELECT '1970-01-01 00:00:00' AS LastLoadDate
+      ```
+      ![image](https://github.com/user-attachments/assets/c67df3ba-4ce2-4a04-b6a3-b53c4eff3ad0)
+  * for *Delta load*, through the delta column associated with timestamp type transactions, take for each workflow the new rows:
+    ```sql
+      SELECT MAX(transactional_date) AS LastLoadDate FROM core.sales
+    ```
+    ![image](https://github.com/user-attachments/assets/5f33d908-3026-422b-b5fe-6cced90552a0)
+* **Set variable**: allowed us to set an environment variable called max, which is the maximum value returned by the query, for the incremental delta operation:
+  ![image](https://github.com/user-attachments/assets/a6c68737-120f-470a-817d-19796a4f6560)
+  ![image](https://github.com/user-attachments/assets/0705807c-2360-4566-9647-aca3c6fc862d)
+
+#### 4'Transformation for Staging Job: Get variable for Sales and Load
+The fourth transformation is as follows:
+![image](https://github.com/user-attachments/assets/800651b6-ad38-4df3-bf9c-a8ef5494133a)
+
+This transformation contains the following steps:
+* **Get variables**: Retrieves the environment variable set on the third transformation, Set variable for Sales
+  ![image](https://github.com/user-attachments/assets/bc266343-9509-48f5-bdd8-c476e639dd3e)
+  ![image](https://github.com/user-attachments/assets/2c3b1a38-22ab-4ae4-babf-37052b3aefd4)
+* **Table input**: From ```public.sales``` we go to find the rows for which the delta column ```transactional_date > '${LastLoadDate}'```
+  ```sql
+  SELECT * 
+  FROM public.sales 
+  WHERE transactional_date > '${LastLoadDate}'
+  ```
+  ![image](https://github.com/user-attachments/assets/1827d8be-8f36-41c2-b44c-dd260258ed40)
+* **Select values**: Since between staging layer and core layer the data type of the cost column is different, through Pentaho we applied a data type transformation, from character varying to number, through the object “Select values”
+  ![image](https://github.com/user-attachments/assets/e569ed3b-f37c-46ad-9c16-45af14bbb30b)
+  ![image](https://github.com/user-attachments/assets/c0b52c37-8509-4f04-8dc0-a869bc21dc4a)
+  ![image](https://github.com/user-attachments/assets/25412ddc-dc55-4c48-bd74-5475c5932720)
+  ![image](https://github.com/user-attachments/assets/1659bdb4-7e15-4fab-bdec-43b5525d33b2)
+* **Table output**: we can send what we return with that query to the “Staging” table.sales
+  ![image](https://github.com/user-attachments/assets/f3ef07de-c87d-447f-a81f-207e79e8ae45)
+
+### Job: Transform & Load
+Transform & Load JOb consists of two transformations:
+* dim_payment;
+* fact_sales.
