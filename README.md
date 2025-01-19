@@ -369,10 +369,7 @@ Through PostgreSQL, with pgAdmin4, we check if there is data on the core layer, 
 ![image](https://github.com/user-attachments/assets/573e29ba-80eb-440f-a01f-4c55f5a9b7ad)
 
 ## ETL Job & Incremental Load: Final Output
-Let's test Delta Load by entering data that was not entered at the start, first adding the data in our data source, then go to “DB DataWarehouseX->Public Schema->Facts Sales Table,” then “Import/Export Data...,” importing the data from the Fact_Sales_2.csv file:
-![image](https://github.com/user-attachments/assets/7088a86c-2ca5-407e-8569-c28ffc4544e9)
-![image](https://github.com/user-attachments/assets/1b65e33c-1305-49f0-bd16-4f92b572f68c)
-Output:
+Let's test Delta Load by entering data that was not entered at the start, first adding the data in our data source, then go to “DB DataWarehouseX->Public Schema->Facts Sales Table,” then “Import/Export Data...,” importing the data from the Fact_Sales_2.csv file, with expective output:
 ![image](https://github.com/user-attachments/assets/83af8121-d941-4199-b274-a6252812c681)
 
 ```sql
@@ -388,3 +385,4 @@ FROM core.sales;
 ![image](https://github.com/user-attachments/assets/f399067e-1d43-4dbe-8ab4-8fdc9ad1e8d1)
 
 Now we are going to test the Delta Incremental, where we have to remember that we had set the dummy value ```‘1970-01-01 00:00:00’``` in SetLastLoadSales.ktr, and going to run the parent job CompleteETLprocess.kjb again, the output is:
+![image](https://github.com/user-attachments/assets/fa2e4a92-e537-4006-9f6d-e9bf2fd007f1)
